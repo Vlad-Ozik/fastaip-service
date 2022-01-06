@@ -17,7 +17,9 @@ class EventData(BaseModel):
     utc_timestap: str
 
     
-def verify_signature(eventData: EventData,decoded_signature: str,shared_secret: str):
+def verify_signature(eventData: EventData, 
+                     decoded_signature: str, 
+                     shared_secret: str) -> bool:
     """Compare the signature in the message and the calculated signature from json
 
     Args:
@@ -44,7 +46,7 @@ async def main(server_event: str,
 
     secret_key = os.environ['SHARED_SECRET']
     
-    if verify_signature(eventData, signature, secret_key) is True:
+    if verify_signature(eventData, signature, secret_key):
         project_id = 'project-pub-task'
         topic_id = 'my-topic'
 
@@ -53,9 +55,10 @@ async def main(server_event: str,
         
         future = publisher.publish(topic_path, str(dict(eventData)).encode("ascii"))
         print(future.result())
+        return {"eventData": eventData, "event": server_event,"appId": appId, "accountId": accountId}
     else:
         client = slack.WebClient(token=os.environ['SLACK_TOKEN'])
         client.chat_postMessage(channel='#testapi', text=f'Invalid signature! {server_event, accountId, sessionId, signature, eventData}')
         raise HTTPException(status_code=400, detail="Invalid signature!")
 
-    return {"eventData": eventData, "event": server_event,"appId": appId, "accountId": accountId}
+    
