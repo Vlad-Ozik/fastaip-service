@@ -1,6 +1,7 @@
 __pycache__/
 .env
 venv/
+.pytest_cache
 
 # GOOGLE CLOUD CREDENTIALS 
-*.json 
+*.json

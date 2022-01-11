@@ -1,7 +1,7 @@
 import hmac, hashlib
 import slack
 
-from config import SECRET_KEY, PROJECT_ID, TOPIC_ID, SLACK_TOKEN
+from app.config import SECRET_KEY, PROJECT_ID, TOPIC_ID, SLACK_TOKEN
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
@@ -53,7 +53,8 @@ async def main(server_event: str,
         return eventData
     else:
         client = slack.WebClient(token=SLACK_TOKEN)
-        client.chat_postMessage(channel='#testapi', text=f'Invalid signature! {server_event, accountId, sessionId, signature, eventData}')
+        client.chat_postMessage(channel='#testapi', 
+                                text=f'Invalid signature! {server_event, accountId, sessionId, signature, eventData}')
         raise HTTPException(status_code=400, detail="Invalid signature!")
 
     
