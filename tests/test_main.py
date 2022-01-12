@@ -2,8 +2,8 @@ import hmac, hashlib
 import random
 import string
 
+from memory_profiler import memory_usage, profile
 from unittest import TestCase
-from parameterized import parameterized
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -11,7 +11,7 @@ from app.config import SECRET_KEY
 
 
 def prepare_data() -> tuple[list[list], list[list], list[list]]:
-    """Generation data for testing:
+    """generating data for testing:
         - data_with_right_sig: list with right signature and all params
         - data_without_params: list with right signature and without params (appId, sessionId, accountId)
         - data_with_wrong_sig: list with wrong signature and all params
@@ -20,10 +20,10 @@ def prepare_data() -> tuple[list[list], list[list], list[list]]:
                                                    data_with_wrong_sig respectively
     """
     
-    def _generation_data(secret_key: bytes, 
+    def _generating_data(secret_key: bytes, 
                          all_params = True, 
                          wrong_sig = False) -> list:
-        """Method for generation random data and calculation signature
+        """Method for generating random data and calculation signature
 
         Args:
             secret_key (bytes): secret key for (d)encryption
@@ -44,7 +44,7 @@ def prepare_data() -> tuple[list[list], list[list], list[list]]:
             "utc_timestap": "2022-01-05T01:26:09"
         }
 
-        # generation random string
+        # generating a random string
         letters = string.ascii_lowercase
         random_str = ''.join(random.choice(letters) for i in range(15))
         json["event"] = random_str
@@ -59,16 +59,16 @@ def prepare_data() -> tuple[list[list], list[list], list[list]]:
             params['signature'] = random_str
             
         if all_params:
-            params.update({'appId': 'casino'})
-            params.update({'accountId': '58483181'})
-            params.update({'sessionId': 1})
+            params.update({'appId': 'casino',
+                           'accountId': '58483181',
+                           'sessionId': 1})
             
         return [params, json]
     
     shared_secret = bytes(SECRET_KEY, encoding='ascii')
-    data_with_right_sig = [_generation_data(shared_secret) for _ in range(5)]
-    data_without_params = [_generation_data(shared_secret, all_params=False) for _ in range(5)]
-    data_with_wrong_sig = [_generation_data(shared_secret, wrong_sig=True) for _ in range(5)]
+    data_with_right_sig = [_generating_data(shared_secret) for _ in range(100)]
+    data_without_params = [_generating_data(shared_secret, all_params=False) for _ in range(10)]
+    data_with_wrong_sig = [_generating_data(shared_secret, wrong_sig=True) for _ in range(10)]
     
     return data_with_right_sig, data_without_params, data_with_wrong_sig
 
@@ -80,20 +80,17 @@ class MainTestCase(TestCase):
     
     def test_data_with_right_sig(self):
         for sample in self.test_data[0]:
-            print(sample)
             response = self.client.post("/test", params=sample[0], json=sample[1])
             assert response.status_code == 201
             assert response.json() == sample[1]
     
     def test_data_without_params(self):
         for sample in self.test_data[1]:
-            print(sample)
             response = self.client.post("/test", params=sample[0], json=sample[1])
             assert response.status_code == 201
             assert response.json() == sample[1]
     
     def test_data_with_wrong_sig(self):
         for sample in self.test_data[2]:
-            print(sample)
             response = self.client.post("/test", params=sample[0], json=sample[1])
             assert response.status_code == 400

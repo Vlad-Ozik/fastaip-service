@@ -1,7 +1,8 @@
 import hmac, hashlib
 import slack
+import gc
 
-from app.config import SECRET_KEY, PROJECT_ID, TOPIC_ID, SLACK_TOKEN
+from config import SECRET_KEY, PROJECT_ID, TOPIC_ID, SLACK_TOKEN
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
@@ -17,7 +18,7 @@ class EventData(BaseModel):
     character_id: str
     utc_timestap: str
 
-    
+
 def verify_signature(eventData: EventData, 
                      decoded_signature: str, 
                      shared_secret: str) -> bool:
@@ -44,12 +45,11 @@ async def main(server_event: str,
                appId: str = None, 
                accountId: int = None, 
                sessionId: int = None):
-    if verify_signature(eventData, signature, SECRET_KEY):
+    if not verify_signature(eventData, signature, SECRET_KEY):
         publisher = pubsub_v1.PublisherClient()
         topic_path = publisher.topic_path(PROJECT_ID, TOPIC_ID)
         
         future = publisher.publish(topic_path, str(dict(eventData)).encode("ascii"))
-        print(future.result())
         return eventData
     else:
         client = slack.WebClient(token=SLACK_TOKEN)
