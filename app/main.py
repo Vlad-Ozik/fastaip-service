@@ -1,6 +1,5 @@
 import hmac, hashlib
 import slack
-import gc
 
 from config import SECRET_KEY, PROJECT_ID, TOPIC_ID, SLACK_TOKEN
 
@@ -38,18 +37,26 @@ def verify_signature(eventData: EventData,
     return hmac.compare_digest(calculated_signature, decoded_signature)
 
 
-@app.post("/{server_event}", status_code=201, response_model=EventData)
+async def send_to_gcp(eventData: EventData):
+    """Send massage to google cloud
+
+    Args:
+        eventData (EventData): data for sending
+    """
+    publisher = pubsub_v1.PublisherClient()
+    topic_path = publisher.topic_path(PROJECT_ID, TOPIC_ID)
+    future = publisher.publish(topic_path, str(dict(eventData)).encode("ascii"))
+
+
+@app.post("/{server_event}", status_code=201)
 async def main(server_event: str,
                eventData: EventData,
                signature: str,
                appId: str = None, 
                accountId: int = None, 
                sessionId: int = None):
-    if not verify_signature(eventData, signature, SECRET_KEY):
-        publisher = pubsub_v1.PublisherClient()
-        topic_path = publisher.topic_path(PROJECT_ID, TOPIC_ID)
-        
-        future = publisher.publish(topic_path, str(dict(eventData)).encode("ascii"))
+    if verify_signature(eventData, signature, SECRET_KEY):
+        send_to_gcp(eventData)
         return eventData
     else:
         client = slack.WebClient(token=SLACK_TOKEN)
